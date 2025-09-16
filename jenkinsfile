@@ -1,9 +1,8 @@
 pipeline {
     agent any
-
     tools {
-        maven 'Maven3'   // make sure Maven is installed in Jenkins Global Tool Configuration
-        jdk 'Java17'     // make sure Java 17 is configured
+        maven 'maven3'     // must match Global Tool name in Jenkins
+        jdk 'java17'       // must match Global Tool name in Jenkins
     }
 
     stages {
@@ -19,22 +18,26 @@ pipeline {
             }
         }
 
-        stage('Archive Artifact') {
+        stage('Test') {
             steps {
-                archiveArtifacts artifacts: 'target/*.war', fingerprint: true
+                sh 'mvn test'
             }
         }
 
         stage('Deploy') {
             steps {
-                echo 'Deploy WAR file to Tomcat or Nexus (add steps here)'
+                sh 'cp target/*.war /opt/tomcat/webapps/'
             }
         }
     }
 
     post {
-        always {
-            junit '**/target/surefire-reports/*.xml'
+        success {
+            archiveArtifacts artifacts: 'target/*.war', fingerprint: true
+            junit 'target/surefire-reports/*.xml'
+        }
+        failure {
+            echo "Build failed. Please check logs."
         }
     }
 }
