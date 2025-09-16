@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mahesh Portal - DevOps Roadmap</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background-color: #f3f4f6; }
+    .navbar { background-color: #271124; color: white; height: 100px; display: flex; align-items: center; gap: 20px; padding: 0 30px; }
+    .navbar img { width: 80px; height: 80px; border-radius: 50%; border: 3px solid white; }
+    .navbar .name { margin-left: 10px; }
+    .container { display: flex; min-height: calc(100vh - 100px); }
+    .roadmap { width: 50%; padding: 2rem; background-color: white; overflow-y: auto; }
+    .roadmap h2 { font-size: 2rem; margin-bottom: 2rem; color: #1f2937; }
+    .roadmap-item { display: flex; gap: 1rem; padding: 1.5rem; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0.5rem; margin-bottom: 1.5rem; position: relative; }
+    .roadmap-item .icon img { width: 50px; height: 50px; }
+    .roadmap-content h3 { margin: 0 0 0.5rem 0; color: #1f2937; }
+    .roadmap-content p { color: #4b5563; line-height: 1.5; }
+    .ribbon { position: absolute; top: 10px; right: -40px; transform: rotate(45deg); width: 140px; text-align: center; font-size: 0.875rem; color: white; padding: 0.25rem 0; }
+    .ribbon.completed { background-color: #facc15; color: #1f2937; font-weight: bold; }
+    .ribbon.pending { background-color: #ef4444; font-weight: bold; }
+    .status { width: 50%; padding: 2rem; background-color: #1f2937; color: white; overflow-y: auto; }
+    .status h2 { font-size: 2rem; margin-bottom: 2rem; }
+    .status-item { background: #374151; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; }
+    .status-item .date { color: #9ca3af; font-size: 0.875rem; margin-bottom: 0.5rem; }
+    .status-item .tag { display: inline-block; background: #2563eb; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.875rem; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+
+  <div class="navbar">
+    <img src="https://avatars.githubusercontent.com/u/138564160?v=4" alt="Profile"/>
+    <div class="name">
+      <h3>Mahesh Gaddameeda</h3>
+      <p>DevOps Engineer</p>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="roadmap">
+      <h2>DevOps Roadmap</h2>
+
+      <div class="roadmap-item">
+        <div class="icon"><img src="https://www.stickerpress.in/media/products/800x800/b66880fed2234b05b1264254b5fae4d1.jpg" alt="Git"/></div>
+        <div class="roadmap-content">
+          <h3>Git & GitHub <span class="ribbon completed">Completed</span></h3>
+          <p>Version Control System, Branching Strategies, Pull Requests, Code Reviews</p>
+        </div>
+      </div>
+
+      <div class="roadmap-item">
+        <div class="icon"><img src="https://cdn.fs.teachablecdn.com/L2rtxPaRxa4am1VtNegg" alt="Maven"/></div>
+        <div class="roadmap-content">
+          <h3>Maven <span class="ribbon completed">Completed</span></h3>
+          <p>Build Automation, Dependency Management, Project Object Model (POM), Build Lifecycles</p>
+        </div>
+      </div>
+
+      <div class="roadmap-item">
+        <div class="icon"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR-xxUGtIiKKym7sK95GyeRg7wWBHKO_p3aQw&s" alt="Jenkins"/></div>
+        <div class="roadmap-content">
+          <h3>Jenkins <span class="ribbon pending">Process</span></h3>
+          <p>CI/CD, Pipeline
+
