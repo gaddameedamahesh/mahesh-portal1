@@ -1,12 +1,21 @@
 pipeline {
     agent any
 
+    tools {
+        jdk 'java17'       // Make sure this matches the JDK configured in Jenkins
+        maven 'maven3'     // Make sure this matches Maven installation in Jenkins
+    }
+
     environment {
-        MAVEN_HOME = '/var/lib/jenkins/tools/hudson.tasks.Maven_MavenInstallation/maven3'
-        JAVA_HOME = '/usr/lib/jvm/java-17-openjdk' // update to your JDK path
-        PATH = "${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${env.PATH}"
-        NEXUS_REPO_URL = 'http://18.212.239.48:8081/repository/mahesh-portal-snapshots/'
-        NEXUS_CREDENTIALS_ID = 'nexus-creds'
+        // Nexus credentials stored in Jenkins Credentials (Username with password)
+        NEXUS_CREDENTIALS = credentials('nexus-creds')
+        // GitHub credentials stored in Jenkins (PAT)
+        GIT_CREDENTIALS = 'maheshprojects-creds'
+        // Nexus repository URL
+        NEXUS_URL = 'http://18.212.239.48:8081/repository/mahesh-portal1/'
+        // Tomcat info
+        TOMCAT_URL = 'http://your-tomcat-server:8080/manager/text'
+        TOMCAT_USER = credentials('tomcat-creds')  // Tomcat username/password in Jenkins
     }
 
     stages {
@@ -15,50 +24,50 @@ pipeline {
             steps {
                 git branch: 'main',
                     url: 'https://github.com/gaddameedamahesh/mahesh-portal1.git',
-                    credentialsId: 'github-portal-creds'
+                    credentialsId: "${GIT_CREDENTIALS}"
             }
         }
 
         stage('Build with Maven') {
             steps {
-                sh "${MAVEN_HOME}/bin/mvn clean package -DskipTests"
+                sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('Upload to Nexus') {
             steps {
-                withCredentials([usernamePassword(credentialsId: "${NEXUS_CREDENTIALS_ID}", 
-                                  passwordVariable: 'NEXUS_PASS', usernameVariable: 'NEXUS_USER')]) {
-                    sh """
-                    ${MAVEN_HOME}/bin/mvn deploy:deploy-file \
+                sh """
+                mvn deploy:deploy-file \
                     -DgroupId=devops \
                     -DartifactId=mahesh-portal \
                     -Dversion=1.0-SNAPSHOT \
                     -Dpackaging=war \
                     -Dfile=target/mahesh-portal.war \
                     -DrepositoryId=nexus \
-                    -Durl=${NEXUS_REPO_URL} \
-                    -Dusername=${NEXUS_USER} \
-                    -Dpassword=${NEXUS_PASS}
-                    """
-                }
+                    -Durl=${NEXUS_URL} \
+                    -Dusername=${NEXUS_CREDENTIALS_USR} \
+                    -Dpassword=${NEXUS_CREDENTIALS_PSW}
+                """
             }
         }
 
         stage('Deploy to Tomcat') {
             steps {
-                echo 'Deployment to Tomcat can go here'
-                // Add your deployment commands if needed
+                sh """
+                curl --upload-file target/mahesh-portal.war \
+                     --user ${TOMCAT_USER_USR}:${TOMCAT_USER_PSW} \
+                     "${TOMCAT_URL}/deploy?path=/mahesh-portal&update=true"
+                """
             }
         }
     }
 
     post {
         success {
-            echo 'Build and deployment completed successfully!'
+            echo "Build and Deployment Successful!"
         }
         failure {
-            echo 'Build or deployment failed. Check logs!'
+            echo "Build or Deployment Failed. Check logs!"
         }
     }
 }
