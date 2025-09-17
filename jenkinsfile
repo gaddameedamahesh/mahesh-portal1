@@ -3,11 +3,11 @@ pipeline {
 
     tools {
         maven 'maven3'
-        jdk 'jdk17'
+        jdk 'java17'
     }
 
     environment {
-        JAVA_HOME = tool name: 'jdk17', type: 'hudson.model.JDK'
+        JAVA_HOME = tool name: 'java17', type: 'hudson.model.JDK'
         PATH = "${JAVA_HOME}/bin:${env.PATH}"
     }
 
