@@ -1,59 +1,73 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'Maven3'      // Maven installation name from Jenkins Global Tool Config
+        jdk 'Java17'        // JDK installation name from Jenkins Global Tool Config
+    }
+
     environment {
-        MAVEN_HOME = tool name: 'maven3', type: 'maven'
-        JAVA_HOME  = tool name: 'java17', type: 'jdk'
+        JAVA_HOME = tool name: 'Java17', type: 'jdk'
+        PATH = "${env.JAVA_HOME}/bin:${env.PATH}"
+        GIT_CREDENTIALS = 'github-creds'       // Jenkins GitHub credentials ID
+        NEXUS_CREDENTIALS = 'nexus-creds'      // Jenkins Nexus credentials ID
+        TOMCAT_CREDENTIALS = 'tomcat-creds'    // Jenkins Tomcat credentials ID
+        SONARQUBE_ENV = 'sonarqube'            // SonarQube installation name
+        NEXUS_URL = 'http://18.212.239.48:8081/repository/mahesh-portal1/'
+        TOMCAT_URL = 'http://18.212.184.15:8080/manager/text'
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout SCM') {
             steps {
                 git branch: 'main',
-                    url: 'https://github.com/gaddameedamahesh/mahesh-portal1.git',
-                    credentialsId: 'github-creds' // Replace with your GitHub credential ID in Jenkins
+                    credentialsId: "${GIT_CREDENTIALS}",
+                    url: 'https://github.com/gaddameedamahesh/mahesh-portal1.git'
             }
         }
 
         stage('Build') {
             steps {
-                withEnv(["PATH+MAVEN=${MAVEN_HOME}/bin","JAVA_HOME=${JAVA_HOME}"]) {
-                    sh 'mvn clean package -DskipTests'
-                }
+                sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('sonarqube') { // Use your SonarQube installation name in Jenkins
-                    sh "${MAVEN_HOME}/bin/mvn sonar:sonar -Dsonar.login=${SONAR_TOKEN}" // SONAR_TOKEN is your Jenkins Secret Text
+                withSonarQubeEnv("${SONARQUBE_ENV}") {
+                    sh 'mvn sonar:sonar'
                 }
             }
         }
 
         stage('Upload to Nexus') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'nexus-creds', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
-                    sh """${MAVEN_HOME}/bin/mvn deploy:deploy-file \
-                        -DrepositoryId=mahesh-nexus \
-                        -Durl=http://18.212.239.48:8081/repository/mahesh-portal1/ \
+                withCredentials([usernamePassword(credentialsId: "${NEXUS_CREDENTIALS}", passwordVariable: 'NEXUS_PASS', usernameVariable: 'NEXUS_USER')]) {
+                    sh """
+                        mvn deploy:deploy-file \
+                        -Durl=${NEXUS_URL} \
+                        -DrepositoryId=nexus-repo \
                         -Dfile=target/mahesh-portal.war \
                         -DgroupId=devops \
                         -DartifactId=mahesh-portal \
                         -Dversion=1.0-SNAPSHOT \
                         -Dpackaging=war \
-                        -Dusername=$NEXUS_USER \
-                        -Dpassword=$NEXUS_PASS"""
+                        -DgeneratePom=true \
+                        -Dusername=${NEXUS_USER} \
+                        -Dpassword=${NEXUS_PASS}
+                    """
                 }
             }
         }
 
         stage('Deploy to Tomcat') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'tomcat-creds', usernameVariable: 'TOMCAT_USER', passwordVariable: 'TOMCAT_PASS')]) {
-                    sh """curl -u $TOMCAT_USER:$TOMCAT_PASS \
-                        -T target/mahesh-portal.war \
-                        http://18.212.184.15:8080/manager/text/deploy?path=/mahesh-portal&update=true"""
+                withCredentials([usernamePassword(credentialsId: "${TOMCAT_CREDENTIALS}", passwordVariable: 'TOMCAT_PASS', usernameVariable: 'TOMCAT_USER')]) {
+                    sh """
+                        curl -u ${TOMCAT_USER}:${TOMCAT_PASS} \
+                        --upload-file target/mahesh-portal.war \
+                        "${TOMCAT_URL}/deploy?path=/mahesh-portal&update=true"
+                    """
                 }
             }
         }
@@ -61,10 +75,10 @@ pipeline {
 
     post {
         success {
-            echo 'Deployment successful!'
+            echo "Build, Nexus upload, SonarQube analysis, and Tomcat deployment completed successfully."
         }
         failure {
-            echo 'Build failed. Check the logs!'
+            echo "Build failed. Check the logs for details."
         }
     }
 }
