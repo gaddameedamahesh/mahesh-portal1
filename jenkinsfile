@@ -2,33 +2,35 @@ pipeline {
     agent any
 
     tools {
-        // Use the exact names from Jenkins Global Tool Configuration
-        maven 'maven3'      // Maven installation name
-        jdk 'java17'        // JDK installation name
+        maven 'maven3'
+        jdk 'jdk17'
     }
 
     environment {
-        JAVA_HOME = tool 'java17' // Make sure this matches the JDK tool name
-        PATH = "${JAVA_HOME}/bin:${env.PATH}"
         MVN_HOME = tool 'maven3'
+        JAVA_HOME = tool 'jdk17'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/gaddameedamahesh/mahesh-portal1.git', credentialsId: 'github-creds'
+                git branch: 'main',
+                    url: 'https://github.com/gaddameedamahesh/mahesh-portal1.git',
+                    credentialsId: 'github-creds'
             }
         }
 
         stage('Build') {
             steps {
-                sh "${MVN_HOME}/bin/mvn clean install"
+                script {
+                    sh "${MVN_HOME}/bin/mvn clean install"
+                }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube') { // Replace with your actual SonarQube installation name
+                withSonarQubeEnv('MySonarQubeServer') {   Change this to your exact SonarQube server name
                     sh "${MVN_HOME}/bin/mvn sonar:sonar"
                 }
             }
@@ -36,38 +38,41 @@ pipeline {
 
         stage('Upload to Nexus') {
             steps {
-                nexusArtifactUploader(
-                    nexusVersion: 'nexus3',
-                    protocol: 'http',
-                    nexusUrl: 'nexus.example.com', // Replace with your Nexus URL
-                    groupId: 'devops',
-                    version: '1.0-SNAPSHOT',
-                    repository: 'maven-releases', // Replace with your repository
-                    credentialsId: 'nexus-creds',  // Nexus credentials in Jenkins
-                    artifacts: [
-                        [artifactId: 'mahesh-portal', classifier: '', file: 'target/mahesh-portal.war', type: 'war']
-                    ]
-                )
+                script {
+                    sh """
+                    ${MVN_HOME}/bin/mvn deploy:deploy-file \
+                      -DgroupId=devops \
+                      -DartifactId=mahesh-portal \
+                      -Dversion=1.0-SNAPSHOT \
+                      -Dpackaging=war \
+                      -Dfile=target/mahesh-portal.war \
+                      -DrepositoryId=nexus \
+                      -Durl=http://18.212.184.15:8081/repository/maven-releases/ \
+                      -Dusername=admin \
+                      -Dpassword=admin123
+                    """
+                }
             }
         }
 
         stage('Deploy to Tomcat') {
             steps {
-                // Using curl to deploy WAR to Tomcat manager
-                sh """
-                curl -u tomcatUser:tomcatPass -T target/mahesh-portal.war \
-                http://tomcat.example.com:8080/manager/text/deploy?path=/mahesh-portal&update=true
-                """
+                script {
+                    sh """
+                    curl -u tomcat:admin123 -T target/mahesh-portal.war \
+                    'http://18.212.184.15:8080/manager/text/deploy?path=/mahesh-portal&update=true'
+                    """
+                }
             }
         }
     }
 
     post {
-        success {
-            echo "Pipeline completed successfully!"
+        always {
+            echo 'Build finished!'
         }
         failure {
-            echo "Build failed. Check the logs for details!"
+            echo 'Build failed. Check logs!'
         }
     }
 }
