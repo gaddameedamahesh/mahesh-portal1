@@ -2,36 +2,34 @@ pipeline {
     agent any
 
     tools {
-        maven 'maven3'   // Make sure this matches your Jenkins Global Tool Config
-        jdk 'java17'     // Make sure this matches your Jenkins Global Tool Config
+        maven 'maven3'   // Jenkins Global Tool Config name
+        jdk 'java17'     // Jenkins Global Tool Config name
     }
 
     environment {
-        JAVA_HOME = tool 'java17'
+        JAVA_HOME = "${tool 'java17'}"
         PATH = "${env.JAVA_HOME}/bin:${env.PATH}"
-        MVN_HOME = tool 'maven3'
+        MVN_HOME = "${tool 'maven3'}"
     }
 
     stages {
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                    credentialsId: 'github-creds',  // Your GitHub credentials ID
+                    credentialsId: 'github-creds',
                     url: 'https://github.com/gaddameedamahesh/mahesh-portal1.git'
             }
         }
 
         stage('Build') {
             steps {
-                script {
-                    sh "${env.MVN_HOME}/bin/mvn clean install"
-                }
+                sh "${env.MVN_HOME}/bin/mvn clean install"
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQubeServer') {  // SonarQube server configured in Jenkins
+                withSonarQubeEnv('SonarQubeServer') {
                     sh "${env.MVN_HOME}/bin/mvn sonar:sonar"
                 }
             }
@@ -39,29 +37,25 @@ pipeline {
 
         stage('Upload to Nexus') {
             steps {
-                script {
-                    sh "${env.MVN_HOME}/bin/mvn deploy -DaltDeploymentRepository=nexus-repo::default::http://nexus-server/repository/maven-releases/"
-                }
+                sh "${env.MVN_HOME}/bin/mvn deploy -DaltDeploymentRepository=nexus-repo::default::http://nexus-server/repository/maven-releases/"
             }
         }
 
         stage('Deploy to Tomcat') {
             steps {
-                script {
-                    sh "cp target/mahesh-portal.war /opt/tomcat/webapps/"
-                    sh "/opt/tomcat/bin/shutdown.sh || true"
-                    sh "/opt/tomcat/bin/startup.sh"
-                }
+                sh "cp target/mahesh-portal.war /opt/tomcat/webapps/"
+                sh "/opt/tomcat/bin/shutdown.sh || true"
+                sh "/opt/tomcat/bin/startup.sh"
             }
         }
     }
 
     post {
         success {
-            echo 'Build, Test, Upload and Deploy completed successfully!'
+            echo 'Build, Test, Upload, and Deploy completed successfully!'
         }
         failure {
-            echo 'Build failed. Check logs!'
+            echo 'Build failed. Check the logs!'
         }
     }
 }
