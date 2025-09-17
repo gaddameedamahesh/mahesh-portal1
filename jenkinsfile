@@ -2,79 +2,66 @@ pipeline {
     agent any
 
     tools {
-        maven 'maven3'
-        jdk 'java17'
+        maven 'maven3'   // Make sure this matches your Jenkins Global Tool Config
+        jdk 'java17'     // Make sure this matches your Jenkins Global Tool Config
     }
 
     environment {
-        GIT_CREDENTIALS = 'github-creds'
-        NEXUS_CREDENTIALS = 'nexus-creds'
-        NEXUS_URL = 'http://18.212.239.48:8081'
-        TOMCAT_CREDENTIALS = 'tomcat-creds'
-        TOMCAT_URL = 'http://18.212.184.15:8080/'
-        SONARQUBE = 'sonarqube'
+        JAVA_HOME = tool 'java17'
+        PATH = "${env.JAVA_HOME}/bin:${env.PATH}"
+        MVN_HOME = tool 'maven3'
     }
 
     stages {
-
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/gaddameedamahesh/mahesh-portal1.git', credentialsId: "${GIT_CREDENTIALS}"
+                git branch: 'main',
+                    credentialsId: 'github-creds',  // Your GitHub credentials ID
+                    url: 'https://github.com/gaddameedamahesh/mahesh-portal1.git'
             }
         }
 
         stage('Build') {
             steps {
-                sh 'mvn clean package -DskipTests'
+                script {
+                    sh "${env.MVN_HOME}/bin/mvn clean install"
+                }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv("${SONARQUBE}") {
-                    sh 'mvn sonar:sonar'
+                withSonarQubeEnv('SonarQubeServer') {  // SonarQube server configured in Jenkins
+                    sh "${env.MVN_HOME}/bin/mvn sonar:sonar"
                 }
             }
         }
 
         stage('Upload to Nexus') {
             steps {
-                nexusArtifactUploader(
-                    nexusVersion: 'nexus3',
-                    protocol: 'http',
-                    nexusUrl: "${NEXUS_URL}",
-                    repository: 'mahesh-portal1',
-                    credentialsId: "${NEXUS_CREDENTIALS}",
-                    groupId: 'devops',
-                    version: '1.0-SNAPSHOT',
-                    artifacts: [
-                        [artifactId: 'mahesh-portal', classifier: '', file: 'target/mahesh-portal.war', type: 'war']
-                    ]
-                )
+                script {
+                    sh "${env.MVN_HOME}/bin/mvn deploy -DaltDeploymentRepository=nexus-repo::default::http://nexus-server/repository/maven-releases/"
+                }
             }
         }
 
         stage('Deploy to Tomcat') {
             steps {
-                tomcatDeploy(
-                    url: "${TOMCAT_URL}",
-                    credentialsId: "${TOMCAT_CREDENTIALS}",
-                    war: 'target/mahesh-portal.war',
-                    path: 'mahesh-portal'
-                )
+                script {
+                    sh "cp target/mahesh-portal.war /opt/tomcat/webapps/"
+                    sh "/opt/tomcat/bin/shutdown.sh || true"
+                    sh "/opt/tomcat/bin/startup.sh"
+                }
             }
         }
     }
 
     post {
-        always {
-            echo 'Build finished!'
-        }
         success {
-            echo 'Deployment completed successfully!'
+            echo 'Build, Test, Upload and Deploy completed successfully!'
         }
         failure {
-            echo 'Build failed. Check the logs for details.'
+            echo 'Build failed. Check logs!'
         }
     }
 }
