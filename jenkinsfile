@@ -3,54 +3,42 @@ pipeline {
 
     tools {
         maven 'maven3'
-        jdk 'java17'   // Change this to the exact JDK name configured in Jenkins (Manage Jenkins → Global Tool Configuration)
+        jdk 'jdk11'
     }
 
     environment {
-        MVN_HOME = tool 'maven3'
-        JAVA_HOME = tool 'java17'   // Must match the JDK name from Jenkins
+        JAVA_HOME = tool name: 'jdk11', type: 'hudson.model.JDK'
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/gaddameedamahesh/mahesh-portal1.git',
-                    credentialsId: 'github-creds'
+                git branch: 'main', url: 'https://github.com/maheshprojects/jenkins-project.git'
             }
         }
 
-        stage('Build') {
+        stage('Build with Maven') {
             steps {
-                script {
-                    sh "${MVN_HOME}/bin/mvn clean install"
-                }
-            }
-        }
-
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('MySonarQubeServer') {   // Replace with the exact SonarQube server name in Jenkins
-                    sh "${MVN_HOME}/bin/mvn sonar:sonar"
-                }
+                sh 'mvn clean package'
             }
         }
 
         stage('Upload to Nexus') {
             steps {
                 script {
-                    sh """
-                    ${MVN_HOME}/bin/mvn deploy:deploy-file \
+                    sh '''
+                    mvn deploy:deploy-file \
                       -DgroupId=devops \
                       -DartifactId=mahesh-portal \
                       -Dversion=1.0-SNAPSHOT \
                       -Dpackaging=war \
                       -Dfile=target/mahesh-portal.war \
                       -DrepositoryId=nexus \
-                      -Durl=http://18.212.184.15:8081/repository/maven-releases/ \
+                      -Durl=http://18.212.239.48:8081/repository/mahesh-portal1/ \
                       -Dusername=admin \
                       -Dpassword=admin123
-                    """
+                    '''
                 }
             }
         }
@@ -58,10 +46,11 @@ pipeline {
         stage('Deploy to Tomcat') {
             steps {
                 script {
-                    sh """
-                    curl -u tomcat:admin123 -T target/mahesh-portal.war \
-                    'http://18.212.184.15:8080/manager/text/deploy?path=/mahesh-portal&update=true'
-                    """
+                    sh '''
+                    curl -u admin:admin \
+                      -T target/mahesh-portal.war \
+                      "http://18.212.239.48:8080/manager/text/deploy?path=/mahesh-portal&update=true"
+                    '''
                 }
             }
         }
@@ -70,6 +59,9 @@ pipeline {
     post {
         always {
             echo 'Build finished!'
+        }
+        success {
+            echo 'Build successful!'
         }
         failure {
             echo 'Build failed. Check logs!'
