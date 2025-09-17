@@ -3,12 +3,12 @@ pipeline {
 
     tools {
         maven 'maven3'
-        jdk 'jdk17'
+        jdk 'java17'   // Change this to the exact JDK name configured in Jenkins (Manage Jenkins → Global Tool Configuration)
     }
 
     environment {
         MVN_HOME = tool 'maven3'
-        JAVA_HOME = tool 'jdk17'
+        JAVA_HOME = tool 'java17'   // Must match the JDK name from Jenkins
     }
 
     stages {
@@ -30,7 +30,7 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('MySonarQubeServer') {   Change this to your exact SonarQube server name
+                withSonarQubeEnv('MySonarQubeServer') {   // Replace with the exact SonarQube server name in Jenkins
                     sh "${MVN_HOME}/bin/mvn sonar:sonar"
                 }
             }
