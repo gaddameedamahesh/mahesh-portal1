@@ -2,15 +2,15 @@ pipeline {
     agent any
 
     tools {
-        // Use the exact names configured in Jenkins Global Tool Configuration
-        maven 'maven3'
-        jdk 'java17'
+        // Use the exact names from Jenkins Global Tool Configuration
+        maven 'maven3'      // Maven installation name
+        jdk 'java17'        // JDK installation name
     }
 
     environment {
-        // Make sure JAVA_HOME points to the Jenkins JDK installation
-        JAVA_HOME = "${tool 'java17'}"
-        PATH = "${JAVA_HOME}/bin:${tool 'maven3'}/bin:${env.PATH}"
+        JAVA_HOME = tool 'java17' // Make sure this matches the JDK tool name
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
+        MVN_HOME = tool 'maven3'
     }
 
     stages {
@@ -22,40 +22,52 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'mvn clean install'
+                sh "${MVN_HOME}/bin/mvn clean install"
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                // Example; adjust SonarQube installation name
-                withSonarQubeEnv('SonarQube') {
-                    sh 'mvn sonar:sonar'
+                withSonarQubeEnv('SonarQube') { // Replace with your actual SonarQube installation name
+                    sh "${MVN_HOME}/bin/mvn sonar:sonar"
                 }
             }
         }
 
         stage('Upload to Nexus') {
             steps {
-                // Replace with your Nexus upload command
-                echo 'Uploading artifact to Nexus...'
+                nexusArtifactUploader(
+                    nexusVersion: 'nexus3',
+                    protocol: 'http',
+                    nexusUrl: 'nexus.example.com', // Replace with your Nexus URL
+                    groupId: 'devops',
+                    version: '1.0-SNAPSHOT',
+                    repository: 'maven-releases', // Replace with your repository
+                    credentialsId: 'nexus-creds',  // Nexus credentials in Jenkins
+                    artifacts: [
+                        [artifactId: 'mahesh-portal', classifier: '', file: 'target/mahesh-portal.war', type: 'war']
+                    ]
+                )
             }
         }
 
         stage('Deploy to Tomcat') {
             steps {
-                // Example: deploy WAR to Tomcat
-                sh 'cp target/mahesh-portal.war /opt/tomcat/webapps/'
+                // Using curl to deploy WAR to Tomcat manager
+                sh """
+                curl -u tomcatUser:tomcatPass -T target/mahesh-portal.war \
+                http://tomcat.example.com:8080/manager/text/deploy?path=/mahesh-portal&update=true
+                """
             }
         }
     }
 
     post {
         success {
-            echo 'Build, analysis, and deployment completed successfully!'
+            echo "Pipeline completed successfully!"
         }
         failure {
-            echo 'Build failed. Check logs!'
+            echo "Build failed. Check the logs for details!"
         }
     }
 }
